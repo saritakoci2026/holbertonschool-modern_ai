@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Log in to Quotes to Scrape and extract protected quotes."""
+"""Log in to a website and scrape quotes after authentication."""
 
 import requests
 from bs4 import BeautifulSoup
 
 
 def login_and_scrape(login_url, user, pwd):
-    """Log in and return quotes visible after authentication."""
+    """Log in using the supplied credentials and scrape the quotes."""
     session = requests.Session()
 
     response = session.get(login_url, timeout=10)
@@ -14,11 +14,7 @@ def login_and_scrape(login_url, user, pwd):
 
     soup = BeautifulSoup(response.text, "html.parser")
     csrf_input = soup.find("input", attrs={"name": "csrf_token"})
-
-    if csrf_input is None:
-        return []
-
-    csrf_token = csrf_input.get("value", "")
+    csrf_token = csrf_input["value"]
 
     payload = {
         "username": user,
@@ -43,6 +39,7 @@ def login_and_scrape(login_url, user, pwd):
     for quote in soup.find_all("div", class_="quote"):
         text_element = quote.find("span", class_="text")
         author_element = quote.find("small", class_="author")
+
         tags = [
             tag.get_text(strip=True)
             for tag in quote.select(".tags a.tag")
@@ -50,7 +47,7 @@ def login_and_scrape(login_url, user, pwd):
 
         if text_element and author_element:
             quotes.append({
-                "text": " ".join(text_element.stripped_strings),
+                "text": text_element.get_text(strip=True),
                 "author": author_element.get_text(strip=True),
                 "tags": tags
             })
