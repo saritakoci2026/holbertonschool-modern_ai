@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Scroll through an infinite-scroll page and scrape unique products."""
+"""Scroll through a page and scrape unique products."""
 
 import time
 from selenium import webdriver
@@ -7,7 +7,7 @@ from selenium.webdriver.common.by import By
 
 
 def scroll_and_scrape(url, scroll_pause=2.0):
-    """Scroll through a page and return its unique product dictionaries."""
+    """Scroll through an infinite-scroll page and scrape products."""
     options = webdriver.ChromeOptions()
     options.add_argument("--headless")
     options.add_argument("--no-sandbox")
@@ -34,7 +34,7 @@ def scroll_and_scrape(url, scroll_pause=2.0):
                 "return document.body.scrollHeight"
             )
 
-            if current_height == previous_height:
+            if current_height <= previous_height:
                 break
 
             previous_height = current_height
@@ -53,8 +53,6 @@ def scroll_and_scrape(url, scroll_pause=2.0):
             description_elements = card.find_elements(
                 By.CSS_SELECTOR, "p.description"
             )
-
-            # Find the rating stars inside the ratings section.
             rating_elements = card.find_elements(
                 By.CSS_SELECTOR, ".ratings .ws-icon-star"
             )
@@ -65,11 +63,9 @@ def scroll_and_scrape(url, scroll_pause=2.0):
             title = title_elements[0].get_attribute("title")
             price = price_elements[0].text.strip()
 
-            description = (
-                description_elements[0].text.strip()
-                if description_elements
-                else ""
-            )
+            description = ""
+            if description_elements:
+                description = description_elements[0].text.strip()
 
             key = (title, price)
 
