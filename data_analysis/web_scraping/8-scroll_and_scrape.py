@@ -1,17 +1,26 @@
 #!/usr/bin/env python3
-"""Scroll through a page and scrape unique products."""
+"""Scrape products from an infinite-scroll page using Selenium."""
 
 import time
 from selenium import webdriver
-from selenium.webdriver.common.by import By
 
 
 def scroll_and_scrape(url, scroll_pause=2.0):
-    """Scroll through an infinite-scroll page and scrape products."""
+    """Scroll through an infinite page and return unique products.
+
+    Args:
+        url (str): URL of the page to scrape.
+        scroll_pause (float): Seconds to wait after scrolling.
+
+    Returns:
+        list: A list of dictionaries containing product information.
+    """
     options = webdriver.ChromeOptions()
     options.add_argument("--headless")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--window-size=1920,1080")
 
     driver = webdriver.Chrome(options=options)
     products = []
@@ -19,6 +28,7 @@ def scroll_and_scrape(url, scroll_pause=2.0):
 
     try:
         driver.get(url)
+        time.sleep(scroll_pause)
 
         previous_height = driver.execute_script(
             "return document.body.scrollHeight"
@@ -34,38 +44,43 @@ def scroll_and_scrape(url, scroll_pause=2.0):
                 "return document.body.scrollHeight"
             )
 
-            if current_height <= previous_height:
-                break
+            if current_height == previous_height:
+                time.sleep(scroll_pause)
+                final_height = driver.execute_script(
+                    "return document.body.scrollHeight"
+                )
+
+                if final_height == current_height:
+                    break
 
             previous_height = current_height
 
-        cards = driver.find_elements(
-            By.CSS_SELECTOR, "div.thumbnail"
-        )
+        cards = driver.find_elements("css selector", "div.thumbnail")
 
         for card in cards:
             title_elements = card.find_elements(
-                By.CSS_SELECTOR, "a.title"
+                "css selector", "a.title"
             )
             price_elements = card.find_elements(
-                By.CSS_SELECTOR, "h4.price"
+                "css selector", "h4.price"
             )
             description_elements = card.find_elements(
-                By.CSS_SELECTOR, "p.description"
+                "css selector", "p.description"
             )
             rating_elements = card.find_elements(
-                By.CSS_SELECTOR, ".ratings .ws-icon-star"
+                "css selector", ".ratings .ws-icon-star"
             )
 
             if not title_elements or not price_elements:
                 continue
 
             title = title_elements[0].get_attribute("title")
-            price = price_elements[0].text.strip()
-
-            description = ""
-            if description_elements:
-                description = description_elements[0].text.strip()
+            price = price_elements[0].text
+            description = (
+                description_elements[0].text
+                if description_elements
+                else ""
+            )
 
             key = (title, price)
 
