@@ -11,3 +11,13 @@ the `requests` library.
 The function supports optional HTTP headers and a timeout.
 It raises an exception for HTTP error status codes and
 returns the HTML response as text.
+
+## Task 8: Scroll & Scrape Products
+
+**File:** `8-scroll_and_scrape.py`
+
+Scrapes infinite-scroll JS-rendered product pages using Selenium.
+
+### Usage
+```bash
+./8-main.py

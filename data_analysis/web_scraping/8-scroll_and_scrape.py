@@ -1,102 +1,83 @@
 #!/usr/bin/env python3
-"""Scrape products from an infinite-scroll page using Selenium."""
-
+"""
+Module for scrolling an infinite-scroll page and scraping products.
+"""
 import time
 from selenium import webdriver
 
 
 def scroll_and_scrape(url, scroll_pause=2.0):
-    """Scroll through an infinite page and return unique products.
+    """
+    Scroll an infinite-scroll page and extract all unique products.
 
     Args:
-        url (str): URL of the page to scrape.
-        scroll_pause (float): Seconds to wait after scrolling.
+        url (str): The URL of the infinite-scroll page.
+        scroll_pause (float): Seconds to wait between each scroll.
 
     Returns:
-        list: A list of dictionaries containing product information.
+        list: A list of dicts, each with keys:
+              "title", "price", "description", "rating".
     """
     options = webdriver.ChromeOptions()
     options.add_argument("--headless")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=1920,1080")
 
     driver = webdriver.Chrome(options=options)
-    products = []
-    seen = set()
-
     try:
         driver.get(url)
         time.sleep(scroll_pause)
 
-        previous_height = driver.execute_script(
-            "return document.body.scrollHeight"
-        )
-
+        # Scroll to the bottom until the page height stops growing
+        last_height = driver.execute_script(
+            "return document.body.scrollHeight")
         while True:
             driver.execute_script(
-                "window.scrollTo(0, document.body.scrollHeight);"
-            )
+                "window.scrollTo(0, document.body.scrollHeight);")
             time.sleep(scroll_pause)
+            new_height = driver.execute_script(
+                "return document.body.scrollHeight")
+            if new_height == last_height:
+                break
+            last_height = new_height
 
-            current_height = driver.execute_script(
-                "return document.body.scrollHeight"
-            )
-
-            if current_height == previous_height:
-                time.sleep(scroll_pause)
-                final_height = driver.execute_script(
-                    "return document.body.scrollHeight"
-                )
-
-                if final_height == current_height:
-                    break
-
-            previous_height = current_height
-
+        # Extract products
+        products = []
+        seen = set()
         cards = driver.find_elements("css selector", "div.thumbnail")
-
         for card in cards:
-            title_elements = card.find_elements(
-                "css selector", "a.title"
-            )
-            price_elements = card.find_elements(
-                "css selector", "h4.price"
-            )
-            description_elements = card.find_elements(
-                "css selector", "p.description"
-            )
-            rating_elements = card.find_elements(
-                "css selector", ".ratings .ws-icon-star"
-            )
+            try:
+                title_el = card.find_element(
+                    "css selector", "a.title")
+                title = title_el.get_attribute("title")
 
-            if not title_elements or not price_elements:
+                price_el = card.find_element(
+                    "css selector", "h4.price")
+                price = price_el.text
+
+                desc_el = card.find_element(
+                    "css selector", "p.description")
+                description = desc_el.text
+
+                rating_els = card.find_elements(
+                    "css selector",
+                    ".ratings .glyphicon-star, .ratings .ws-icon-star")
+                rating = len(rating_els)
+
+                key = (title, price)
+                if key in seen:
+                    continue
+                seen.add(key)
+
+                products.append({
+                    "title": title,
+                    "price": price,
+                    "description": description,
+                    "rating": rating
+                })
+            except Exception:
                 continue
 
-            title = title_elements[0].get_attribute("title")
-            price = price_elements[0].text
-            description = (
-                description_elements[0].text
-                if description_elements
-                else ""
-            )
-
-            key = (title, price)
-
-            if key in seen:
-                continue
-
-            seen.add(key)
-
-            products.append({
-                "title": title,
-                "price": price,
-                "description": description,
-                "rating": len(rating_elements)
-            })
-
+        return products
     finally:
         driver.quit()
-
-    return products
