@@ -21,3 +21,5 @@ def plot_correlation_heatmap(df):
     )
 
     plt.show()
+
+    return None
